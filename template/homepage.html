@@ -147,12 +147,22 @@
   </style>
 
   <style>
+    #main h1 {
+      position: absolute;
+      bottom: 0;
+    }
+
     .block {
       display: flex;
     }
 
     .block form.do {
       margin-right: 5rem;
+    }
+
+    .block form.do,
+    .block #result {
+      width: 35vw;
     }
 
     #source-input,
@@ -163,7 +173,35 @@
     }
 
     #result {
-      //display: none;
+      display: none;
+    }
+
+    #result .tabs {
+      margin: 0;
+      padding: 0;
+      list-style-type: none;
+    }
+
+    #result .tabs li {
+      display: inline-block;
+    }
+
+    #result .tabs .radio {
+      color: black;
+      text-decoration: none;
+      border: 1px solid black;
+      padding: 0 10px;
+    }
+
+    #result .tabs .radio.on {
+      color: white;
+      background-color: black;
+    }
+
+    #result #preview {
+      border: 1px solid black;
+      margin-top: 0;
+      padding: 1rem;
     }
   </style>
 </head>
@@ -189,18 +227,17 @@
         <textarea id="source-input" name="src"></textarea>
 
         <div>
-          <input type="submit" value="Go">
+          <input type="submit" name="go" value="Go">
         </div>
       </form>
 
       <div id="result">
         <ul class="tabs">
-          <li><a href="#preview">Preview</a></li>
-          <li><a href="#source">Source</a></li>
+          <li><a class="radio" href="#preview">Preview</a></li>
+          <li><a class="radio" href="#source">Source</a></li>
         </ul>
 
-        <div id="preview">
-        </div>
+        <pre id="preview"></pre>
 
         <textarea id="source"></textarea>
       </div>
@@ -241,6 +278,8 @@
         return node.matches(this.el);
       },
       submit: function(form) {
+        form.go.value = "Doing...";
+
         var xhr = new XMLHttpRequest();
         var data = new FormData(form);
 
@@ -253,6 +292,7 @@
       },
       ok: function(event) {
         //console.log(event, this.responseText);
+        document.querySelector(syntax.form.el).go.value = "Go again";
         var result = JSON.parse(this.responseText);
         syntax.result.show(result.data);
       },
@@ -262,36 +302,107 @@
     };
 
     syntax.result = {
+      el: document.querySelector("#result"),
+
       start: function() {
         this.tab.start();
       },
       show: function(text) {
+        this.el.style.display = "block";
         this.tab.text(text);
         this.tab.show('preview');
       }
     };
 
     syntax.result.tab = {
+      el: "#result .tabs .radio",
+
       start: function() {
-        // add click listener
+        document.body.addEventListener("click", this.handler);
       },
+
+      handler: function(event) {
+        if (syntax.result.tab.isRadio(event.target)) {
+          syntax.result.tab.show(event.target.href.replace(/.+#/, ''));
+          event.preventDefault();
+        }
+      },
+
+      isRadio: function(node) {
+        return node.matches(this.el);
+      },
+
       text: function(value) {
+        for (var tab in this) {
+          if (this[tab].text) {
+            this[tab].text(value);
+          }
+        }
       },
-      show: function() {
+      show: function(tab) {
+        this.hide();
+        this[tab].on();
       },
       hide: function() {
+        for (var tab in this) {
+          if (this[tab].off) {
+            this[tab].off();
+          }
+        }
       }
     };
 
     syntax.result.tab.preview = {
+      el: document.querySelector("#preview"),
+
       text: function(value) {
-        document.querySelector("#preview").innerHTML = value;
+        this.el.innerHTML = value;
+      },
+      on: function() {
+        this.radio.on();
+        this.el.style.display = "block";
+      },
+      off: function() {
+        this.radio.off();
+        this.el.style.display = "none";
+      }
+    };
+
+    syntax.result.tab.preview.radio = {
+      el: document.querySelector(".tabs a.radio[href='#preview']"),
+
+      on: function() {
+        this.el.classList.add("on");
+      },
+      off: function() {
+        this.el.classList.remove("on");
       }
     };
 
     syntax.result.tab.source = {
+      el: document.querySelector("#source"),
+
       text: function(value) {
-        document.querySelector("#source").value = value;
+        this.el.value = value;
+      },
+      on: function() {
+        this.radio.on();
+        this.el.style.display = "block";
+      },
+      off: function() {
+        this.radio.off();
+        this.el.style.display = "none";
+      }
+    };
+
+    syntax.result.tab.source.radio = {
+      el: document.querySelector(".tabs a.radio[href='#source']"),
+
+      on: function() {
+        this.el.classList.add("on");
+      },
+      off: function() {
+        this.el.classList.remove("on");
       }
     };
 
